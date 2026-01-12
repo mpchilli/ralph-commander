@@ -6,9 +6,9 @@ Update README.md and all documentation in the project so the messaging reflects 
 
 - [x] Replace the "somewhat functional" wording in README.md introduction with balanced language (functional alpha / early-stage)
 - [x] Replace the NOTE block warning about "toy project", "expect bugs", and "breaking changes" with a middle-ground note (alpha-quality, rough edges, APIs may change)
-- [ ] Ensure consistent messaging throughout - avoid both "toy project" and "production-ready" extremes
+- [x] Ensure consistent messaging throughout - avoid both "toy project" and "production-ready" extremes
 - [x] Keep the Ralph Wiggum personality/humor (quotes, learnding, etc.) - only adjust maturity/stability language
-- [ ] Review and update any similar disclaimers across the documentation set
+- [x] Review and update any similar disclaimers across the documentation set
 - [x] Maintain a professional, approachable, candid tone befitting an evolving open-source project
 
 ## Technical Specifications
@@ -33,4 +33,5 @@ Update README.md and all documentation in the project so the messaging reflects 
 - Updated `README.md` intro and NOTE to reflect alpha quality, removed "production-ready" messaging in README.
 - Updated docs landing + mkdocs metadata to reflect alpha-quality messaging: `docs/index.md`, `mkdocs.yml`.
 - Updated guide pages to remove "production-ready" claims while keeping content intact: `docs/guide/overview.md`, `docs/guide/agents.md`, `docs/guide/web-monitoring-complete.md`.
-- Next: scan remaining docs (e.g. `docs/deployment/production.md`) for "enterprise-grade"/overly-final claims and align to the same alpha-quality tone.
+- Updated deployment docs to remove overly-final claims while keeping the operational guidance: `docs/deployment/production.md`.
+- Repo docs scan complete: no remaining "toy project" / "production-ready" / "enterprise-grade" messaging in `README.md`, `docs/`, or `mkdocs.yml`.
