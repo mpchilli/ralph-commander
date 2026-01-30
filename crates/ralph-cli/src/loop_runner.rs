@@ -1634,7 +1634,7 @@ pub async fn start_loop(
         ColorMode::Never,
         false, // not resume
         false, // no TUI
-        Verbosity::Quiet,
+        Verbosity::Normal,
         None, // no session recording
         Some(loop_context),
         Vec::new(), // no custom args
