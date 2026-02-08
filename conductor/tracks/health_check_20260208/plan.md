@@ -23,9 +23,9 @@ This plan outlines the implementation of the `ralph health` command, including c
 - [x] Task: Conductor - User Manual Verification 'Verification Suite' (Protocol in workflow.md)
 
 ## Phase 3: Error Handling & Ambiguity Trigger
-- [ ] Task: Implement Error Reporting and Remediation Hints
-    - [ ] Format failure summaries and non-zero exit code handling.
-    - [ ] Ensure `--quiet` mode suppresses non-essential output.
-- [ ] Task: Conductor - Ambiguity Protocol Trigger: Output Formatting
-    - [ ] **BLOCKING TASK**: This task is intentionally left with a choice between Text and JSON to trigger the **Proactive Optioning** protocol.
-- [ ] Task: Conductor - User Manual Verification 'Final Integration' (Protocol in workflow.md)
+- [x] Task: Implement Error Reporting and Remediation Hints
+    - [x] Format failure summaries and non-zero exit code handling.
+    - [x] Ensure `--quiet` mode suppresses non-essential output.
+- [x] Task: Conductor - Ambiguity Protocol Trigger: Output Formatting
+    - [x] **BLOCKING TASK**: This task is intentionally left with a choice between Text and JSON to trigger the **Proactive Optioning** protocol.
+- [x] Task: Conductor - User Manual Verification 'Final Integration' (Protocol in workflow.md)

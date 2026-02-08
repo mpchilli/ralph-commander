@@ -4,6 +4,7 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use clap::{ArgAction, Parser};
 use ralph_core::RalphConfig;
+use serde::Serialize;
 use std::path::Path;
 
 use crate::ConfigSource;
@@ -18,9 +19,20 @@ pub struct HealthArgs {
     #[arg(short, long)]
     pub quiet: bool,
 
+    /// Output results in JSON format
+    #[arg(long)]
+    pub json: bool,
+
     /// Run only specific check(s) (e.g., git, conductor, env, disk)
     #[arg(long, value_name = "NAME", action = ArgAction::Append)]
     pub check: Vec<String>,
+}
+
+#[derive(Serialize)]
+pub struct HealthReport {
+    pub status: String,
+    pub passed: bool,
+    pub results: Vec<HealthResult>,
 }
 
 pub async fn execute(
@@ -47,46 +59,50 @@ pub async fn execute(
         checks.push(Box::new(DiskCheck));
     }
 
-    let mut failures = Vec::new();
     let mut results = Vec::new();
 
     for check in checks {
-        let result = check.run(&config).await;
-        if !result.success {
-            failures.push(result.clone());
-        }
-        results.push(result);
+        results.push(check.run(&config).await);
     }
 
-    if !args.quiet {
+    let all_passed = results.iter().all(|r| r.success);
+    let report = HealthReport {
+        status: if all_passed { "OK".to_string() } else { "FAIL".to_string() },
+        passed: all_passed,
+        results: results.clone(),
+    };
+
+    if args.json {
+        println!("{}", serde_json::to_string_pretty(&report)?);
+    } else if !args.quiet {
         for result in &results {
             if args.verbose || !result.success {
                 print_result(result, use_colors);
             }
         }
-    }
 
-    if failures.is_empty() {
-        if !args.quiet {
+        if all_passed {
             if use_colors {
                 println!("\x1b[32mSystem OK\x1b[0m");
             } else {
                 println!("System OK");
             }
-        }
-        Ok(())
-    } else {
-        if !args.quiet {
+        } else {
             println!("\nSummary of failures:");
-            for failure in &failures {
+            for failure in results.iter().filter(|r| !r.success) {
                 println!("  - {}: {}", failure.name, failure.message);
                 if let Some(hint) = &failure.remediation {
                     println!("    Hint: {}", hint);
                 }
             }
         }
+    }
+
+    if !all_passed {
         std::process::exit(1);
     }
+    
+    Ok(())
 }
 
 fn print_result(result: &HealthResult, use_colors: bool) {
@@ -103,12 +119,13 @@ trait HealthCheck: Send + Sync {
     async fn run(&self, config: &RalphConfig) -> HealthResult;
 }
 
-#[derive(Clone)]
-struct HealthResult {
-    name: String,
-    success: bool,
-    message: String,
-    remediation: Option<String>,
+#[derive(Clone, Serialize)]
+pub struct HealthResult {
+    pub name: String,
+    pub success: bool,
+    pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub remediation: Option<String>,
 }
 
 struct GitCheck;
@@ -183,7 +200,6 @@ struct EnvCheck;
 #[async_trait]
 impl HealthCheck for EnvCheck {
     async fn run(&self, config: &RalphConfig) -> HealthResult {
-        // Example: Check for Telegram token if RObot is enabled
         if config.robot.enabled {
             if config.robot.resolve_bot_token().is_some() {
                  HealthResult {
@@ -216,7 +232,6 @@ struct DiskCheck;
 #[async_trait]
 impl HealthCheck for DiskCheck {
     async fn run(&self, _config: &RalphConfig) -> HealthResult {
-        // Placeholder for disk space check
         HealthResult {
             name: "Disk Space".to_string(),
             success: true,
@@ -268,4 +283,3 @@ mod tests {
         assert!(result.message.contains("Conductor directory missing"));
     }
 }
-
