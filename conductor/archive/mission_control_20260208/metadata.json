@@ -1,0 +1,8 @@
+{
+  "track_id": "mission_control_20260208",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-02-08T22:51:00Z",
+  "updated_at": "2026-02-08T22:51:00Z",
+  "description": "Implement Captain's Mission Control (Visibility & Status). Requirements: 1. Implement '.captain-status.md': Create a real-time Markdown dashboard in the project root that updates *every iteration* with the Current Task, Active Hat (Triage/TEA/Executor), Progress %, and Last Snapshot SHA (Source 82). 2. Implement '.captain-status.json': Generate a machine-readable version for external IDE extensions. 3. Implement 'RequestLog.md' Aggregator: Ensure that Triage decisions, TEA Gate results, and Human Choices are all centralized into this single forensic audit log (Source 72). 4. CLI Header: Modify the CLI output to print a 'Captain's Header' (Task ID | Hat | Risk Level) at the start of each step."
+}
