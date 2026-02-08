@@ -9,9 +9,9 @@ This plan outlines the total overhaul of the `conductor/workflow.md` file to cod
 - [x] Task: Draft "Triage Phase" Mandates
     - [x] Write the section requiring mandatory complexity assessment before planning.
     - [x] Define assessment criteria: Impact Surface, Ambiguity Index (1-10), and Testing Tier (T1/T2/T3).
-- [ ] Task: Draft "Safety-Hardened Execution" (Snapshots)
-    - [ ] Write the mandate for `CAPTAIN_SNAPSHOT` exactly once before every Task.
-    - [ ] Define the requirement for the snapshot hash before any tool call is permitted.
+- [x] Task: Draft "Safety-Hardened Execution" (Snapshots)
+    - [x] Write the mandate for `CAPTAIN_SNAPSHOT` exactly once before every Task.
+    - [x] Define the requirement for the snapshot hash before any tool call is permitted.
 - [ ] Task: Draft "Ambiguity & Recovery" Protocols
     - [ ] Write the "Proactive Optioning" (Options A/B/C) mandate including Trade-offs, Risk Profile, and Effort.
     - [ ] Write the "Recovery Protocol" section mandating `RECOVERY_QUEUE.md` usage for failures.
