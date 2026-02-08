@@ -1,0 +1,29 @@
+# Implementation Plan - Protocol Activation: Codify Captain Methodology
+
+This plan outlines the total overhaul of the `conductor/workflow.md` file to codify the Captain v3.1 methodology as a non-negotiable architectural contract.
+
+## Phase 1: Preparation & Drafting
+- [ ] Task: Conductor - Audit Existing Workflow and Sources
+    - [ ] Identify all legacy/permissive language in `conductor/workflow.md` that must be removed.
+    - [ ] Cross-reference Captain Sources (74, 15, 83, 87, 95, 82) to ensure terminology alignment.
+- [ ] Task: Draft "Triage Phase" Mandates
+    - [ ] Write the section requiring mandatory complexity assessment before planning.
+    - [ ] Define assessment criteria: Impact Surface, Ambiguity Index (1-10), and Testing Tier (T1/T2/T3).
+- [ ] Task: Draft "Safety-Hardened Execution" (Snapshots)
+    - [ ] Write the mandate for `CAPTAIN_SNAPSHOT` exactly once before every Task.
+    - [ ] Define the requirement for the snapshot hash before any tool call is permitted.
+- [ ] Task: Draft "Ambiguity & Recovery" Protocols
+    - [ ] Write the "Proactive Optioning" (Options A/B/C) mandate including Trade-offs, Risk Profile, and Effort.
+    - [ ] Write the "Recovery Protocol" section mandating `RECOVERY_QUEUE.md` usage for failures.
+- [ ] Task: Draft "Visibility & Audit" Requirements
+    - [ ] Write the mandate for `.captain-status.md` (HUD) updated via Lifecycle Hooks.
+    - [ ] Write the requirement for `RequestLog.md` as the central forensic audit aggregator.
+- [ ] Task: Conductor - User Manual Verification 'Preparation & Drafting' (Protocol in workflow.md)
+
+## Phase 2: Finalization & Integration
+- [ ] Task: Assemble and Refine `conductor/workflow.md`
+    - [ ] Combine all drafted sections into a cohesive, "law-like" document.
+    - [ ] Ensure the tone is non-negotiable and safety-hardened.
+- [ ] Task: Verify Cross-Document Consistency
+    - [ ] Ensure `conductor/product.md` and `conductor/workflow.md` are perfectly aligned on Captain v3.1 principles.
+- [ ] Task: Conductor - User Manual Verification 'Finalization & Integration' (Protocol in workflow.md)
