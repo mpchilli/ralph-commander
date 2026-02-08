@@ -408,6 +408,90 @@ pub fn get_recent_files(path: impl AsRef<Path>, limit: usize) -> Result<Vec<Stri
     Ok(files)
 }
 
+/// Create an atomic snapshot commit before task execution.
+///
+/// This stages all changes and creates a commit with the CAPTAIN_SNAPSHOT prefix.
+///
+/// # Arguments
+///
+/// * `path` - Path to the git repository (or worktree)
+/// * `task_id` - The ID of the task about to be started
+pub fn create_atomic_snapshot(
+    path: impl AsRef<Path>,
+    task_id: &str,
+) -> Result<AutoCommitResult, GitOpsError> {
+    let path = path.as_ref();
+
+    // Check if there are any uncommitted changes
+    if !has_uncommitted_changes(path)? {
+        return Ok(AutoCommitResult::no_commit());
+    }
+
+    // Stage all changes (git add -A)
+    let output = Command::new("git")
+        .args(["add", "-A"])
+        .current_dir(path)
+        .output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(GitOpsError::Git(format!("Failed to stage changes for snapshot: {}", stderr)));
+    }
+
+    let files_staged = count_staged_files(path)?;
+    if files_staged == 0 {
+        return Ok(AutoCommitResult::no_commit());
+    }
+
+    // Create the snapshot commit
+    let commit_message = format!("CAPTAIN_SNAPSHOT: Pre-execution for task {}", task_id);
+
+    let output = Command::new("git")
+        .args(["commit", "-m", &commit_message])
+        .current_dir(path)
+        .output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(GitOpsError::Git(format!("Failed to create snapshot commit: {}", stderr)));
+    }
+
+    let commit_sha = get_head_sha(path)?;
+
+    Ok(AutoCommitResult {
+        committed: true,
+        commit_sha: Some(commit_sha),
+        files_staged,
+    })
+}
+
+/// Attach a git note to a commit.
+///
+/// # Arguments
+///
+/// * `path` - Path to the git repository (or worktree)
+/// * `ref_name` - The commit SHA or reference to attach the note to (e.g., "HEAD")
+/// * `note` - The content of the note
+pub fn add_git_note(
+    path: impl AsRef<Path>,
+    ref_name: &str,
+    note: &str,
+) -> Result<(), GitOpsError> {
+    let path = path.as_ref();
+
+    let output = Command::new("git")
+        .args(["notes", "add", "-f", "-m", note, ref_name])
+        .current_dir(path)
+        .output()?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(GitOpsError::Git(format!("Failed to add git note: {}", stderr)));
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

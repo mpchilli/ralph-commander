@@ -16,6 +16,8 @@ mod event_bus;
 mod hat;
 pub mod robot;
 mod topic;
+pub mod tea;
+pub mod triage;
 mod ux_event;
 
 pub use daemon::{DaemonAdapter, StartLoopFn};
@@ -24,7 +26,9 @@ pub use event::Event;
 pub use event_bus::EventBus;
 pub use hat::{Hat, HatId};
 pub use robot::{CheckinContext, RobotService};
+pub use tea::{SafetyTier, TestStrategy};
 pub use topic::Topic;
+pub use triage::{RoutingMode, TriageDecision};
 pub use ux_event::{
     FrameCapture, TerminalColorMode, TerminalResize, TerminalWrite, TuiFrame, UxEvent,
 };

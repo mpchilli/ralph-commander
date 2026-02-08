@@ -4,7 +4,7 @@
 //! state of the orchestration loop including iteration count, failures,
 //! timing, and hat activation tracking.
 
-use ralph_proto::HatId;
+use ralph_proto::{HatId, TriageDecision, TestStrategy};
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 
@@ -42,6 +42,18 @@ pub struct LoopState {
     /// Hats for which `<hat_id>.exhausted` has been emitted.
     pub exhausted_hats: HashSet<HatId>,
 
+    /// The triage decision for the current task.
+    pub triage_decision: Option<TriageDecision>,
+
+    /// The active testing strategy defined by TEA.
+    pub active_strategy: Option<TestStrategy>,
+
+    /// The SHA of the last atomic snapshot created.
+    pub last_snapshot_sha: Option<String>,
+
+    /// Whether the loop is currently halted due to a safety violation or failure.
+    pub is_halted: bool,
+
     /// When the last Telegram check-in message was sent.
     /// `None` means no check-in has been sent yet.
     pub last_checkin_at: Option<Instant>,
@@ -64,6 +76,10 @@ impl Default for LoopState {
             completion_requested: false,
             hat_activation_counts: HashMap::new(),
             exhausted_hats: HashSet::new(),
+            triage_decision: None,
+            active_strategy: None,
+            last_snapshot_sha: None,
+            is_halted: false,
             last_checkin_at: None,
         }
     }

@@ -13,6 +13,7 @@
 #[cfg(feature = "recording")]
 mod cli_capture;
 mod config;
+pub mod audit_logger;
 pub mod diagnostics;
 mod event_logger;
 mod event_loop;
@@ -37,6 +38,7 @@ mod memory_store;
 pub mod merge_queue;
 pub mod planning_session;
 pub mod preflight;
+pub mod recovery_queue;
 #[cfg(feature = "recording")]
 mod session_player;
 #[cfg(feature = "recording")]
@@ -47,14 +49,17 @@ mod summary_writer;
 pub mod task;
 pub mod task_definition;
 pub mod task_store;
+pub mod tea_hat;
 pub mod testing;
 mod text;
+pub mod triage_hat;
 pub mod utils;
 pub mod workspace;
 pub mod worktree;
 
 #[cfg(feature = "recording")]
 pub use cli_capture::{CliCapture, CliCapturePair};
+pub use audit_logger::AuditLogger;
 pub use config::{
     CliConfig, ConfigError, CoreConfig, EventLoopConfig, EventMetadata, FeaturesConfig, HatBackend,
     HatConfig, InjectMode, MemoriesConfig, MemoriesFilter, RalphConfig, SkillOverride,
@@ -100,6 +105,7 @@ pub use preflight::{
     AcceptanceCriterion, CheckResult, CheckStatus, PreflightCheck, PreflightReport,
     PreflightRunner, extract_acceptance_criteria, extract_all_criteria, extract_criteria_from_file,
 };
+pub use recovery_queue::RecoveryQueue;
 #[cfg(feature = "recording")]
 pub use session_player::{PlayerConfig, ReplayMode, SessionPlayer, TimestampedRecord};
 #[cfg(feature = "recording")]
@@ -108,10 +114,12 @@ pub use skill::{SkillEntry, SkillFrontmatter, SkillSource, parse_frontmatter};
 pub use skill_registry::SkillRegistry;
 pub use summary_writer::SummaryWriter;
 pub use task::{Task, TaskStatus};
+pub use tea_hat::TEAHat;
 pub use task_definition::{
     TaskDefinition, TaskDefinitionError, TaskSetup, TaskSuite, Verification,
 };
 pub use task_store::TaskStore;
+pub use triage_hat::TriageHat;
 pub use text::{floor_char_boundary, truncate_with_ellipsis};
 pub use workspace::{
     CleanupPolicy, TaskWorkspace, VerificationResult, WorkspaceError, WorkspaceInfo,

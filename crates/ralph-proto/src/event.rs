@@ -1,6 +1,6 @@
 //! Event types for pub/sub messaging.
 
-use crate::{HatId, Topic};
+use crate::{HatId, Topic, TriageDecision, TestStrategy};
 use serde::{Deserialize, Serialize};
 
 /// An event in the pub/sub system.
@@ -17,6 +17,12 @@ pub struct Event {
 
     /// Optional target hat for direct handoff.
     pub target: Option<HatId>,
+
+    /// Optional triage decision associated with this event.
+    pub triage: Option<TriageDecision>,
+
+    /// Optional testing strategy associated with this event.
+    pub strategy: Option<TestStrategy>,
 }
 
 impl Event {
@@ -27,6 +33,8 @@ impl Event {
             payload: payload.into(),
             source: None,
             target: None,
+            triage: None,
+            strategy: None,
         }
     }
 
@@ -41,6 +49,20 @@ impl Event {
     #[must_use]
     pub fn with_target(mut self, target: impl Into<HatId>) -> Self {
         self.target = Some(target.into());
+        self
+    }
+
+    /// Sets the triage decision for this event.
+    #[must_use]
+    pub fn with_triage(mut self, triage: TriageDecision) -> Self {
+        self.triage = Some(triage);
+        self
+    }
+
+    /// Sets the testing strategy for this event.
+    #[must_use]
+    pub fn with_strategy(mut self, strategy: TestStrategy) -> Self {
+        self.strategy = Some(strategy);
         self
     }
 }

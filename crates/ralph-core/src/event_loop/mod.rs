@@ -5,6 +5,8 @@
 mod loop_state;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod triage_tests;
 
 pub use loop_state::LoopState;
 
@@ -117,6 +119,14 @@ pub struct EventLoop {
     loop_context: Option<LoopContext>,
     /// Skill registry for the current loop.
     skill_registry: SkillRegistry,
+    /// Audit logger for safety events.
+    audit_logger: crate::audit_logger::AuditLogger,
+    /// Recovery queue for human intervention.
+    recovery_queue: crate::recovery_queue::RecoveryQueue,
+    /// Triage Hat for complexity analysis.
+    triage_hat: crate::triage_hat::TriageHat,
+    /// TEA Hat for risk-based verification strategy.
+    tea_hat: crate::tea_hat::TEAHat,
     /// Robot service for human-in-the-loop communication.
     /// Injected externally when `human.enabled` is true and this is the primary loop.
     robot_service: Option<Box<dyn RobotService>>,
@@ -174,6 +184,14 @@ impl EventLoop {
         // Custom hats are registered first (higher priority), Ralph catches everything else.
         for hat in registry.all() {
             bus.register(hat.clone());
+        }
+
+        // Register built-in Scale-Adaptive hats if not already defined
+        if registry.get(&HatId::new("tea")).is_none() {
+            bus.register(ralph_proto::Hat::default_tea());
+        }
+        if registry.get(&HatId::new("simple-executor")).is_none() {
+            bus.register(ralph_proto::Hat::default_simple_executor());
         }
 
         // Always register Ralph as catch-all coordinator
@@ -247,6 +265,10 @@ impl EventLoop {
             diagnostics,
             loop_context: Some(context),
             skill_registry,
+            audit_logger: crate::audit_logger::AuditLogger::new(context.workspace()),
+            recovery_queue: crate::recovery_queue::RecoveryQueue::new(context.workspace()),
+            triage_hat: crate::triage_hat::TriageHat::new(),
+            tea_hat: crate::tea_hat::TEAHat::new(),
             robot_service: None,
         }
     }
@@ -267,6 +289,14 @@ impl EventLoop {
         // Custom hats are registered first (higher priority), Ralph catches everything else.
         for hat in registry.all() {
             bus.register(hat.clone());
+        }
+
+        // Register built-in Scale-Adaptive hats if not already defined
+        if registry.get(&HatId::new("tea")).is_none() {
+            bus.register(ralph_proto::Hat::default_tea());
+        }
+        if registry.get(&HatId::new("simple-executor")).is_none() {
+            bus.register(ralph_proto::Hat::default_simple_executor());
         }
 
         // Always register Ralph as catch-all coordinator
@@ -337,6 +367,10 @@ impl EventLoop {
             diagnostics,
             loop_context: None,
             skill_registry,
+            audit_logger: crate::audit_logger::AuditLogger::new(workspace_root),
+            recovery_queue: crate::recovery_queue::RecoveryQueue::new(workspace_root),
+            triage_hat: crate::triage_hat::TriageHat::new(),
+            tea_hat: crate::tea_hat::TEAHat::new(),
             robot_service: None,
         }
     }
@@ -471,6 +505,34 @@ impl EventLoop {
         None
     }
 
+    /// Blocks the current thread if the recovery queue is non-empty.
+    ///
+    /// Per Captain Methodology: "Wait/poll until the file is cleared."
+    /// This ensures human sovereignty by physically stopping agent autonomy.
+    pub async fn block_on_recovery_queue(&mut self) {
+        if !self.recovery_queue.is_blocked() {
+            if self.state.is_halted {
+                info!("Recovery queue cleared. Resuming orchestration.");
+                self.audit_logger.log_recovery();
+                self.state.is_halted = false;
+            }
+            return;
+        }
+
+        self.state.is_halted = true;
+        warn!("🚨 RECOVERY REQUIRED: Implementation halted. Please check RECOVERY_QUEUE.md");
+        self.audit_logger.log_halt("Manual recovery block active");
+
+        while self.recovery_queue.is_blocked() {
+            // Poll every 2 seconds
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        }
+
+        info!("Recovery queue cleared. Resuming orchestration.");
+        self.audit_logger.log_recovery();
+        self.state.is_halted = false;
+    }
+
     /// Checks if a completion event was received and returns termination reason.
     ///
     /// Completion is only accepted via JSONL events (e.g., `ralph emit`).
@@ -534,6 +596,12 @@ impl EventLoop {
 
     /// Initializes the loop by publishing the start event.
     pub fn initialize(&mut self, prompt_content: &str) {
+        // CAPTAIN SAFETY NET: Refuse to initialize if blocked
+        if self.recovery_queue.is_blocked() {
+            warn!("🚨 STARTUP BLOCKED: Recovery queue is not empty. Clear RECOVERY_QUEUE.md to start.");
+            return;
+        }
+
         // Use configured starting_event or default to task.start for backward compatibility
         let topic = self
             .config
@@ -560,7 +628,57 @@ impl EventLoop {
         // so without this the objective would be invisible to later hats.
         self.ralph.set_objective(prompt_content.to_string());
 
-        let start_event = Event::new(topic, prompt_content);
+        let mut triage_decision = None;
+
+        // Triage the task if it's a starting event
+        if topic == "task.start" {
+            // CAPTAIN SAFETY NET: Create atomic snapshot before execution
+            // We use a generic "initial" tag if task ID isn't easily accessible here
+            match crate::git_ops::create_atomic_snapshot(&self.config.core.workspace_root, "initial") {
+                Ok(result) if result.committed => {
+                    info!(sha = ?result.commit_sha, "Created CAPTAIN_SNAPSHOT before task start");
+                    self.state.last_snapshot_sha = result.commit_sha;
+                }
+                Ok(_) => {
+                    debug!("No changes to snapshot before task start");
+                }
+                Err(e) => {
+                    warn!("Failed to create CAPTAIN_SNAPSHOT: {}", e);
+                }
+            }
+
+            let decision = self.triage_hat.analyze(prompt_content);
+            debug!(mode = ?decision.mode, reason = %decision.reason, "Triage decision made");
+
+            // Store decision in state for audit trail
+            self.state.triage_decision = Some(decision.clone());
+            triage_decision = Some(decision.clone());
+
+            // Publish triage decision event (EventBus will update its internal mode)
+            let decision_json = serde_json::to_string(&decision).unwrap_or_default();
+            let mut decision_event = Event::new("triage.decision", decision_json);
+            if let Some(ref d) = triage_decision {
+                decision_event = decision_event.with_triage(d.clone());
+            }
+            self.bus.publish(decision_event);
+
+            // Trigger TEA Hat to design strategy based on triage decision
+            let strategy = self.tea_hat.design_strategy(prompt_content);
+            debug!(tier = ?strategy.tier, coverage = strategy.min_coverage, "Test strategy designed");
+            
+            // Store strategy in state
+            self.state.active_strategy = Some(strategy.clone());
+            
+            // Publish test strategy event
+            let strategy_json = serde_json::to_string(&strategy).unwrap_or_default();
+            let strategy_event = Event::new("test.strategy", strategy_json).with_strategy(strategy);
+            self.bus.publish(strategy_event);
+        }
+
+        let mut start_event = Event::new(topic, prompt_content);
+        if let Some(ref d) = triage_decision {
+            start_event = start_event.with_triage(d.clone());
+        }
         self.bus.publish(start_event);
         debug!(topic = topic, "Published {} event", topic);
     }
@@ -1713,21 +1831,53 @@ impl EventLoop {
             if event.topic == "build.done" {
                 // Validate build.done events have backpressure evidence
                 if let Some(evidence) = EventParser::parse_backpressure_evidence(&payload) {
-                    if evidence.all_passed() {
+                    // Check against active TEA strategy if present
+                    let mut strategy_passed = true;
+                    let mut strategy_errors = Vec::new();
+                    
+                    if let Some(strategy) = &self.state.active_strategy {
+                        // Check coverage
+                        if evidence.coverage_passed {
+                            // If we had numerical coverage in evidence, we'd check it here
+                            // For now we assume coverage_passed is a boolean from the parser
+                        } else if strategy.min_coverage > 0.0 {
+                            strategy_passed = false;
+                            strategy_errors.push(format!("Coverage check failed (Required: {}%)", strategy.min_coverage));
+                        }
+                        
+                        // Check mandatory categories
+                        for category in &strategy.mandatory_categories {
+                            match category.as_str() {
+                                "unit" if !evidence.tests_passed => {
+                                    strategy_passed = false;
+                                    strategy_errors.push("Mandatory unit tests failed".into());
+                                }
+                                "lint" if !evidence.lint_passed => {
+                                    strategy_passed = false;
+                                    strategy_errors.push("Mandatory linting failed".into());
+                                }
+                                "security" if !evidence.audit_passed => {
+                                    strategy_passed = false;
+                                    strategy_errors.push("Mandatory security audit failed".into());
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+
+                    if evidence.all_passed() && strategy_passed {
                         self.warn_on_mutation_evidence(&evidence);
                         validated_events.push(Event::new(event.topic.as_str(), &payload));
                     } else {
                         // Evidence present but checks failed - synthesize build.blocked
+                        let error_msg = if !strategy_passed {
+                            format!("TEA Strategy Gate Violation: {}", strategy_errors.join(", "))
+                        } else {
+                            "Backpressure checks failed. Fix tests/lint/typecheck/audit/coverage/complexity/duplication/specs before emitting build.done.".to_string()
+                        };
+
                         warn!(
-                            tests = evidence.tests_passed,
-                            lint = evidence.lint_passed,
-                            typecheck = evidence.typecheck_passed,
-                            audit = evidence.audit_passed,
-                            coverage = evidence.coverage_passed,
-                            complexity = evidence.complexity_score,
-                            duplication = evidence.duplication_passed,
-                            performance = evidence.performance_regression,
-                            specs = evidence.specs_verified,
+                            errors = ?strategy_errors,
                             "build.done rejected: backpressure checks failed"
                         );
 
@@ -1765,9 +1915,18 @@ impl EventLoop {
                             },
                         );
 
+                        // CAPTAIN SAFETY NET: Record failure in recovery queue
+                        let _ = self.recovery_queue.record_failure(
+                            &Self::extract_task_id(&payload),
+                            &error_msg,
+                            self.state.last_snapshot_sha.as_deref(),
+                        );
+                        self.state.is_halted = true;
+                        self.audit_logger.log_halt(&format!("Backpressure failure: {}", error_msg));
+
                         validated_events.push(Event::new(
                             "build.blocked",
-                            "Backpressure checks failed. Fix tests/lint/typecheck/audit/coverage/complexity/duplication/specs before emitting build.done.",
+                            error_msg,
                         ));
                     }
                 } else {
@@ -1782,9 +1941,20 @@ impl EventLoop {
                         },
                     );
 
+                    let error_msg = "Missing backpressure evidence. Include 'tests: pass', 'lint: pass', 'typecheck: pass', 'audit: pass', 'coverage: pass', 'complexity: <score>', 'duplication: pass', 'performance: pass' (optional), 'specs: pass' (optional) in build.done payload.".to_string();
+                    
+                    // CAPTAIN SAFETY NET: Record failure in recovery queue
+                    let _ = self.recovery_queue.record_failure(
+                        "unknown",
+                        &error_msg,
+                        self.state.last_snapshot_sha.as_deref(),
+                    );
+                    self.state.is_halted = true;
+                    self.audit_logger.log_halt(&format!("Backpressure error: {}", error_msg));
+
                     validated_events.push(Event::new(
                         "build.blocked",
-                        "Missing backpressure evidence. Include 'tests: pass', 'lint: pass', 'typecheck: pass', 'audit: pass', 'coverage: pass', 'complexity: <score>', 'duplication: pass', 'performance: pass' (optional), 'specs: pass' (optional) in build.done payload.",
+                        error_msg,
                     ));
                 }
             } else if event.topic == "review.done" {
@@ -2122,6 +2292,32 @@ impl EventLoop {
 
         // Publish to bus for observers (but no hat can trigger on this)
         self.bus.publish(event.clone());
+
+        // Audit Trail: Record triage decision and TEA strategy in Git Notes
+        let mut audit_entries = Vec::new();
+        
+        if let Some(decision) = &self.state.triage_decision {
+            audit_entries.push(format!(
+                "triage_mode={:?}, triage_reason=\"{}\", confidence={:.2}",
+                decision.mode, decision.reason, decision.confidence
+            ));
+        }
+        
+        if let Some(strategy) = &self.state.active_strategy {
+            audit_entries.push(format!(
+                "tea_tier={:?}, min_coverage={}%, mandatory_suites={:?}, hard_gates={:?}",
+                strategy.tier, strategy.min_coverage, strategy.mandatory_categories, strategy.hard_gates
+            ));
+        }
+
+        if !audit_entries.is_empty() {
+            let note = format!("RALPH_AUDIT: {}", audit_entries.join(" | "));
+            if let Err(e) = crate::git_ops::add_git_note(&self.config.core.workspace_root, "HEAD", &note) {
+                warn!("Failed to add triage/TEA audit note to git: {}", e);
+            } else {
+                info!("Triage and TEA audit data recorded in Git Notes");
+            }
+        }
 
         info!(
             reason = %reason.as_str(),

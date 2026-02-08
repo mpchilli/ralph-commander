@@ -4,7 +4,7 @@
 //! Multiple observers can be added to receive all published events for
 //! recording, TUI updates, and benchmarking purposes.
 
-use crate::{Event, Hat, HatId};
+use crate::{Event, Hat, HatId, RoutingMode};
 use std::collections::HashMap;
 
 /// Type alias for the observer callback function.
@@ -25,12 +25,38 @@ pub struct EventBus {
     /// Observers that receive all published events.
     /// Multiple observers can be registered (e.g., session recorder + TUI).
     observers: Vec<Observer>,
+
+    /// The current routing mode (decided by Triage Hat).
+    routing_mode: Option<RoutingMode>,
+
+    /// The active testing strategy (decided by TEA Hat).
+    active_strategy: Option<crate::TestStrategy>,
 }
 
 impl EventBus {
     /// Creates a new empty event bus.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Sets the routing mode for the bus.
+    pub fn set_routing_mode(&mut self, mode: RoutingMode) {
+        self.routing_mode = Some(mode);
+    }
+
+    /// Returns the current routing mode.
+    pub fn routing_mode(&self) -> Option<RoutingMode> {
+        self.routing_mode
+    }
+
+    /// Sets the active testing strategy.
+    pub fn set_active_strategy(&mut self, strategy: crate::TestStrategy) {
+        self.active_strategy = Some(strategy);
+    }
+
+    /// Returns the active testing strategy.
+    pub fn active_strategy(&self) -> Option<&crate::TestStrategy> {
+        self.active_strategy.as_ref()
     }
 
     /// Adds an observer that receives all published events.
@@ -82,6 +108,20 @@ impl EventBus {
             observer(&event);
         }
 
+        // Intercept triage decisions to update bus state
+        if event.topic.as_str() == "triage.decision" {
+            if let Ok(decision) = serde_json::from_str::<crate::TriageDecision>(&event.payload) {
+                self.routing_mode = Some(decision.mode);
+            }
+        }
+
+        // Intercept test strategies to update bus state
+        if event.topic.as_str() == "test.strategy" {
+            if let Ok(strategy) = serde_json::from_str::<crate::TestStrategy>(&event.payload) {
+                self.active_strategy = Some(strategy);
+            }
+        }
+
         if event.topic.as_str().starts_with("human.") {
             self.human_pending.push(event);
             return Vec::new();
@@ -110,6 +150,24 @@ impl EventBus {
         let mut fallback_recipients = Vec::new();
 
         for (id, hat) in &self.hats {
+            // Apply triage routing filters
+            if let Some(mode) = self.routing_mode {
+                match mode {
+                    RoutingMode::Simple => {
+                        // In Simple mode, skip the planner (Architect) for task.start
+                        if id.as_str() == "planner" && event.topic.as_str() == "task.start" {
+                            continue;
+                        }
+                    }
+                    RoutingMode::Full => {
+                        // In Full mode, skip the simple-executor for triage decisions
+                        if id.as_str() == "simple-executor" && event.topic.as_str() == "triage.decision" {
+                            continue;
+                        }
+                    }
+                }
+            }
+
             if hat.has_specific_subscription(&event.topic) {
                 // Hat has a specific subscription for this topic
                 specific_recipients.push(id.clone());

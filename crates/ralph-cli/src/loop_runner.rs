@@ -621,6 +621,9 @@ pub async fn run_loop_impl(
             return Ok(reason);
         }
 
+        // CAPTAIN SAFETY NET: Block if recovery required
+        event_loop.block_on_recovery_queue().await;
+
         // Drain next-loop guidance queue and write as human.guidance events.
         // These will be picked up by process_events_from_jsonl() during build_prompt().
         if let Some(ref queue) = guidance_next_queue {

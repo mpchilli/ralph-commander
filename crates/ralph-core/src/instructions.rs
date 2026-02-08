@@ -62,6 +62,13 @@ impl InstructionBuilder {
                 "task.start" | "task.resume" => {
                     Some("Analyze the task and create a plan in the scratchpad.")
                 }
+                "triage.decision" => {
+                    Some("Analyze the triage decision. If Simple, design a minimal test strategy (e.g., one regression test). If Full, wait for the full plan to design a comprehensive strategy.")
+                }
+                "test.strategy" => {
+                    Some("Follow the test strategy. You MUST NOT mark a task complete unless all tests defined in the strategy pass.")
+                }
+                "plan.ready" => Some("Analyze the implementation plan and define the risk-based testing strategy."),
                 "build.done" => Some("Review the completed work and decide next steps."),
                 "build.blocked" => Some(
                     "Analyze the blocker and decide how to unblock (simplify task, gather info, or escalate).",
