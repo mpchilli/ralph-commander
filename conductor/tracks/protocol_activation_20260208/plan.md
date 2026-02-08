@@ -24,6 +24,6 @@ This plan outlines the total overhaul of the `conductor/workflow.md` file to cod
 - [x] Task: Assemble and Refine `conductor/workflow.md`
     - [x] Combine all drafted sections into a cohesive, "law-like" document.
     - [x] Ensure the tone is non-negotiable and safety-hardened.
-- [ ] Task: Verify Cross-Document Consistency
-    - [ ] Ensure `conductor/product.md` and `conductor/workflow.md` are perfectly aligned on Captain v3.1 principles.
-- [ ] Task: Conductor - User Manual Verification 'Finalization & Integration' (Protocol in workflow.md)
+- [x] Task: Verify Cross-Document Consistency
+    - [x] Ensure `conductor/product.md` and `conductor/workflow.md` are perfectly aligned on Captain v3.1 principles.
+- [x] Task: Conductor - User Manual Verification 'Finalization & Integration' (Protocol in workflow.md)
