@@ -1,0 +1,8 @@
+{
+  "track_id": "captain_safety_net_20260208",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-02-08T22:12:00Z",
+  "updated_at": "2026-02-08T22:12:00Z",
+  "description": "Implement Captain's Safety Net (Atomic Snapshots & Recovery Queue). Requirements: 1. Implement 'Atomic Snapshots': The EventLoop must trigger a git commit immediately before dispatching any 'task.start' event to ensure 100% recoverability. 2. Implement 'Recovery Queue': Create a 'RECOVERY_QUEUE.md' file. If a task fails, write the failure details (Task ID, Error) to this file and immediately transition the loop to a 'Halted' state. 3. Implement 'Sovereignty Check': The EventLoop must check 'RECOVERY_QUEUE.md' on startup and before every iteration; if the file is not empty, it must refuse to run (BLOCK) until the human manually clears it. 4. Audit Logging: Ensure all halt events are logged to 'RequestLog.md'. 5. Verification: Add unit tests to confirm that a populated queue prevents task execution."
+}

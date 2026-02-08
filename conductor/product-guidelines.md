@@ -1,9 +1,9 @@
-# Product Guidelines: Ralph Commander 3.1
+# Product Guidelines: Ralph Commander
 
 ## Command Protocol: Structured Sovereignty & Total Auditability
 - **Structured Interaction:** Communication must never be open-ended during blockers. The system must use "Proactive Optioning" (presenting clear A/B/C paths) via the Telegram/CLI interface to resolve ambiguity, ensuring the human remains the ultimate authority.
 - **Terminology Discipline:** Documentation, logs, and agent responses must use strict architectural terms (Triage, TEA Gate, Snapshot) rather than generic AI descriptions. This ensures the user always knows exactly which "Hat" is currently active.
-- **Immutable Audit:** Every triage decision, test strategy, and recovery event must be committed to a machine-readable log (`command-log.json`) and attached to Git Commits, creating a permanent forensic trail of autonomous activity.
+- **Immutable Audit:** Every triage decision, test strategy, and recovery event must be committed to a machine-readable log (`RequestLog.md`) and attached to Git Commits, creating a permanent forensic trail of autonomous activity.
 
 ## Adaptive Command Center: Dynamic Fidelity with Sovereign Interrupts
 - **Dynamic Fidelity:** The interface density must shift based on the active workflow. 
