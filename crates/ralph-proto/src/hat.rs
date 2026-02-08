@@ -130,6 +130,35 @@ impl Hat {
         }
     }
 
+    /// Creates the default simple path executor hat.
+    ///
+    /// Triggers on `triage.decision` when mode is Simple.
+    pub fn default_simple_executor() -> Self {
+        Self {
+            id: HatId::new("simple-executor"),
+            name: "Simple Executor".to_string(),
+            description: "Directly implements minor fixes without full planning".to_string(),
+            subscriptions: vec![Topic::new("test.strategy")],
+            publishes: vec![Topic::new("build.done"), Topic::new("build.blocked")],
+            instructions: String::new(),
+        }
+    }
+
+    /// Creates the default TEA (Test Architect) hat.
+    pub fn default_tea() -> Self {
+        Self {
+            id: HatId::new("tea"),
+            name: "TEA (Test Architect)".to_string(),
+            description: "Designs risk-based testing strategies and enforces quality gates".to_string(),
+            subscriptions: vec![
+                Topic::new("triage.decision"),
+                Topic::new("plan.ready"),
+            ],
+            publishes: vec![Topic::new("test.strategy")],
+            instructions: String::new(),
+        }
+    }
+
     /// Adds a subscription to this hat.
     #[must_use]
     pub fn subscribe(mut self, topic: impl Into<Topic>) -> Self {
