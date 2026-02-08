@@ -3,12 +3,12 @@
 This plan outlines the total overhaul of the `conductor/workflow.md` file to codify the Captain v3.1 methodology as a non-negotiable architectural contract.
 
 ## Phase 1: Preparation & Drafting
-- [ ] Task: Conductor - Audit Existing Workflow and Sources
-    - [ ] Identify all legacy/permissive language in `conductor/workflow.md` that must be removed.
-    - [ ] Cross-reference Captain Sources (74, 15, 83, 87, 95, 82) to ensure terminology alignment.
-- [ ] Task: Draft "Triage Phase" Mandates
-    - [ ] Write the section requiring mandatory complexity assessment before planning.
-    - [ ] Define assessment criteria: Impact Surface, Ambiguity Index (1-10), and Testing Tier (T1/T2/T3).
+- [x] Task: Conductor - Audit Existing Workflow and Sources
+    - [x] Identify all legacy/permissive language in `conductor/workflow.md` that must be removed.
+    - [x] Cross-reference Captain Sources (74, 15, 83, 87, 95, 82) to ensure terminology alignment.
+- [x] Task: Draft "Triage Phase" Mandates
+    - [x] Write the section requiring mandatory complexity assessment before planning.
+    - [x] Define assessment criteria: Impact Surface, Ambiguity Index (1-10), and Testing Tier (T1/T2/T3).
 - [ ] Task: Draft "Safety-Hardened Execution" (Snapshots)
     - [ ] Write the mandate for `CAPTAIN_SNAPSHOT` exactly once before every Task.
     - [ ] Define the requirement for the snapshot hash before any tool call is permitted.
