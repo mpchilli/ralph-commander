@@ -1,6 +1,6 @@
 //! Event types for pub/sub messaging.
 
-use crate::{HatId, Topic, TriageDecision, TestStrategy};
+use crate::{HatId, Topic, TriageDecision, TestStrategy, ProactiveOptions};
 use serde::{Deserialize, Serialize};
 
 /// An event in the pub/sub system.
@@ -23,6 +23,9 @@ pub struct Event {
 
     /// Optional testing strategy associated with this event.
     pub strategy: Option<TestStrategy>,
+
+    /// Optional proactive options for human-in-the-loop interaction.
+    pub options: Option<ProactiveOptions>,
 }
 
 impl Event {
@@ -35,6 +38,7 @@ impl Event {
             target: None,
             triage: None,
             strategy: None,
+            options: None,
         }
     }
 
@@ -63,6 +67,13 @@ impl Event {
     #[must_use]
     pub fn with_strategy(mut self, strategy: TestStrategy) -> Self {
         self.strategy = Some(strategy);
+        self
+    }
+
+    /// Sets the proactive options for this event.
+    #[must_use]
+    pub fn with_options(mut self, options: ProactiveOptions) -> Self {
+        self.options = Some(options);
         self
     }
 }

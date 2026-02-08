@@ -4,7 +4,7 @@
 //! state of the orchestration loop including iteration count, failures,
 //! timing, and hat activation tracking.
 
-use ralph_proto::{HatId, TriageDecision, TestStrategy};
+use ralph_proto::{HatId, TriageDecision, TestStrategy, ProactiveOptions};
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 
@@ -48,6 +48,12 @@ pub struct LoopState {
     /// The active testing strategy defined by TEA.
     pub active_strategy: Option<TestStrategy>,
 
+    /// The active proactive options for human-in-the-loop interaction.
+    pub active_options: Option<ProactiveOptions>,
+
+    /// The human decision for the active options.
+    pub human_decision: Option<String>,
+
     /// The SHA of the last atomic snapshot created.
     pub last_snapshot_sha: Option<String>,
 
@@ -78,6 +84,8 @@ impl Default for LoopState {
             exhausted_hats: HashSet::new(),
             triage_decision: None,
             active_strategy: None,
+            active_options: None,
+            human_decision: None,
             last_snapshot_sha: None,
             is_halted: false,
             last_checkin_at: None,

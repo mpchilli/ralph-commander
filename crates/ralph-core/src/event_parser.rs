@@ -601,6 +601,29 @@ impl EventParser {
         if seen { Some(report) } else { None }
     }
 
+    /// Detects "Need Clarification" signals or ambiguity in the output text
+    /// that precedes any event tags.
+    ///
+    /// Returns true if the output suggests the agent is stuck and needs human input.
+    pub fn parse_ambiguity_request(output: &str) -> bool {
+        let clean_output = strip_ansi(output).to_lowercase();
+        let stripped = Self::strip_event_tags(&clean_output);
+
+        let patterns = [
+            "need clarification",
+            "i am unsure",
+            "i'm unsure",
+            "i am uncertain",
+            "i'm uncertain",
+            "please provide guidance",
+            "waiting for human command",
+            "ambiguity detected",
+            "stuck on technical blocker",
+        ];
+
+        patterns.iter().any(|&p| stripped.contains(p))
+    }
+
     /// Checks if output contains the completion promise.
     ///
     /// Per spec: The promise must appear in the agent's final output,

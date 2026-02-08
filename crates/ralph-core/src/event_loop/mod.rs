@@ -510,27 +510,74 @@ impl EventLoop {
     /// Per Captain Methodology: "Wait/poll until the file is cleared."
     /// This ensures human sovereignty by physically stopping agent autonomy.
     pub async fn block_on_recovery_queue(&mut self) {
-        if !self.recovery_queue.is_blocked() {
-            if self.state.is_halted {
-                info!("Recovery queue cleared. Resuming orchestration.");
-                self.audit_logger.log_recovery();
-                self.state.is_halted = false;
+        // Block if recovery required
+        if self.recovery_queue.is_blocked() {
+            self.state.is_halted = true;
+            warn!("🚨 RECOVERY REQUIRED: Implementation halted. Please check RECOVERY_QUEUE.md");
+            self.audit_logger.log_halt("Manual recovery block active");
+
+            while self.recovery_queue.is_blocked() {
+                // Poll every 2 seconds
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
             }
+
+            info!("Recovery queue cleared. Resuming orchestration.");
+            self.audit_logger.log_recovery();
+            self.state.is_halted = false;
+        }
+
+        // Block if proactive options are pending and no robot service is active to handle it
+        // (In CLI mode without Telegram, we handle this via direct terminal interaction)
+        if self.state.active_options.is_some() && self.robot_service.is_none() {
+            self.state.is_halted = true;
+            self.handle_cli_proactive_options().await;
+            self.state.is_halted = false;
+        }
+    }
+
+    /// Handles proactive options interaction via the CLI when no robot service is present.
+    async fn handle_cli_proactive_options(&mut self) {
+        let Some(options) = self.state.active_options.take() else {
             return;
+        };
+
+        println!("\n{}", "=".repeat(80));
+        println!("🚨 AMBIGUITY DETECTED: Human strategic input required");
+        println!("{}\n", options.question);
+
+        for choice in &options.options {
+            println!("Option {}: {}", choice.id, choice.description);
+            if !choice.pros.is_empty() {
+                println!("  Pros: {}", choice.pros.join(", "));
+            }
+            if !choice.cons.is_empty() {
+                println!("  Cons: {}", choice.cons.join(", "));
+            }
+            println!("  Impact: {}\n", choice.impact);
         }
 
-        self.state.is_halted = true;
-        warn!("🚨 RECOVERY REQUIRED: Implementation halted. Please check RECOVERY_QUEUE.md");
-        self.audit_logger.log_halt("Manual recovery block active");
+        print!("Select an option ({}): ", options.options.iter().map(|o| o.id.as_str()).collect::<Vec<_>>().join("/"));
+        use std::io::Write;
+        let _ = std::io::stdout().flush();
 
-        while self.recovery_queue.is_blocked() {
-            // Poll every 2 seconds
-            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-        }
+        let mut input = String::new();
+        let _ = std::io::stdin().read_line(&mut input);
+        let selection = input.trim().to_uppercase();
 
-        info!("Recovery queue cleared. Resuming orchestration.");
-        self.audit_logger.log_recovery();
-        self.state.is_halted = false;
+        let chosen = options.options.iter().find(|o| o.id.to_uppercase() == selection)
+            .map(|o| o.id.clone())
+            .unwrap_or_else(|| {
+                warn!("Invalid selection, defaulting to the first option: {}", options.options[0].id);
+                options.options[0].id.clone()
+            });
+
+        info!(selection = %chosen, "Human decision captured");
+        self.state.human_decision = Some(chosen.clone());
+        self.audit_logger.log_event("HUMAN_DECISION", &format!("Question: {} | Selected: {}", options.question, chosen));
+
+        // Publish human.response event
+        let response_event = Event::new("human.response", format!("Human Decision: Use Option {}", chosen));
+        self.bus.publish(response_event);
     }
 
     /// Checks if a completion event was received and returns termination reason.
@@ -812,7 +859,17 @@ impl EventLoop {
                 self.apply_robot_guidance();
 
                 // Build base prompt and prepend memories + scratchpad + ready tasks
-                let base_prompt = self.ralph.build_prompt(&events_context, &[]);
+                let mut base_prompt = self.ralph.build_prompt(&events_context, &[]);
+                
+                // CAPTAIN SAFETY NET: Inject Human Decision if active
+                if let Some(decision) = self.state.human_decision.take() {
+                    let override_instruction = format!(
+                        "\n\n### 🚨 SOVEREIGN COMMAND\n[HUMAN DECISION: Use Option {}]\nYou MUST strictly adhere to this choice. Do not attempt to re-triage or suggest alternatives.\n\n",
+                        decision
+                    );
+                    base_prompt.insert_str(0, &override_instruction);
+                }
+
                 self.ralph.clear_robot_guidance();
                 let with_skills = self.prepend_auto_inject_skills(base_prompt);
                 let with_scratchpad = self.prepend_scratchpad(with_skills);
@@ -880,7 +937,16 @@ impl EventLoop {
                     .join("\n");
 
                 // Build base prompt and prepend memories + scratchpad if available
-                let base_prompt = self.ralph.build_prompt(&events_context, &active_hats);
+                let mut base_prompt = self.ralph.build_prompt(&events_context, &active_hats);
+
+                // CAPTAIN SAFETY NET: Inject Human Decision if active
+                if let Some(decision) = self.state.human_decision.take() {
+                    let override_instruction = format!(
+                        "\n\n### 🚨 SOVEREIGN COMMAND\n[HUMAN DECISION: Use Option {}]\nYou MUST strictly adhere to this choice. Do not attempt to re-triage or suggest alternatives.\n\n",
+                        decision
+                    );
+                    base_prompt.insert_str(0, &override_instruction);
+                }
 
                 // Build prompt with active hats - filters instructions to only active hats
                 debug!(
@@ -2136,6 +2202,14 @@ impl EventLoop {
         if let Some(idx) = ask_human_idx {
             let ask_event = &validated_events[idx];
             let payload = ask_event.payload.clone();
+
+            // CAPTAIN SAFETY NET: Parse structured options if present
+            if let Ok(options) = serde_json::from_str::<ralph_proto::ProactiveOptions>(&payload) {
+                info!(question = %options.question, "Proactive Options detected in human.interact");
+                self.state.active_options = Some(options.clone());
+                // Attach options to the event for later use in UI
+                validated_events[idx].options = Some(options);
+            }
 
             if let Some(ref robot_service) = self.robot_service {
                 info!(

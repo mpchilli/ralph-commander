@@ -109,6 +109,9 @@ impl InstructionBuilder {
                 "build.task" => Some("Dispatch ONE AT A TIME for pending `[ ]` tasks."),
                 "build.done" => Some("When implementation is finished and tests pass."),
                 "build.blocked" => Some("When stuck - include what you tried and why it failed."),
+                "human.interact" => Some(
+                    "When you encounter ambiguity or technical blockers, you MUST NOT proceed autonomously. Instead, publish `human.interact` with a structured JSON payload containing 2-3 solutions (Options A, B, C) with pros/cons and technical impact.",
+                ),
                 "review.request" => Some("After build completion, before marking done."),
                 "review.approved" => Some("If changes look good and meet requirements."),
                 "review.changes_requested" => Some("If issues found - include specific feedback."),
