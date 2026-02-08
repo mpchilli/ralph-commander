@@ -16,6 +16,7 @@ mod bot;
 mod display;
 mod doctor;
 mod hats;
+mod health;
 mod init;
 mod interact;
 mod loop_runner;
@@ -396,6 +397,9 @@ enum Commands {
 
     /// Run first-run diagnostics and environment checks
     Doctor(doctor::DoctorArgs),
+
+    /// Run system health checks
+    Health(health::HealthArgs),
 
     /// Interactive walkthrough of hats, presets, and workflow
     Tutorial(TutorialArgs),
@@ -811,6 +815,9 @@ async fn main() -> Result<()> {
         }
         Some(Commands::Doctor(args)) => {
             doctor::execute(&config_sources, args, cli.color.should_use_colors()).await
+        }
+        Some(Commands::Health(args)) => {
+            health::execute(&config_sources, args, cli.color.should_use_colors()).await
         }
         Some(Commands::Tutorial(args)) => tutorial_command(cli.color, args),
         Some(Commands::Resume(args)) => {
