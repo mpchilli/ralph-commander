@@ -12,9 +12,9 @@ This plan outlines the total overhaul of the `conductor/workflow.md` file to cod
 - [x] Task: Draft "Safety-Hardened Execution" (Snapshots)
     - [x] Write the mandate for `CAPTAIN_SNAPSHOT` exactly once before every Task.
     - [x] Define the requirement for the snapshot hash before any tool call is permitted.
-- [ ] Task: Draft "Ambiguity & Recovery" Protocols
-    - [ ] Write the "Proactive Optioning" (Options A/B/C) mandate including Trade-offs, Risk Profile, and Effort.
-    - [ ] Write the "Recovery Protocol" section mandating `RECOVERY_QUEUE.md` usage for failures.
+- [x] Task: Draft "Ambiguity & Recovery" Protocols
+    - [x] Write the "Proactive Optioning" (Options A/B/C) mandate including Trade-offs, Risk Profile, and Effort.
+    - [x] Write the "Recovery Protocol" section mandating `RECOVERY_QUEUE.md` usage for failures.
 - [ ] Task: Draft "Visibility & Audit" Requirements
     - [ ] Write the mandate for `.captain-status.md` (HUD) updated via Lifecycle Hooks.
     - [ ] Write the requirement for `RequestLog.md` as the central forensic audit aggregator.
