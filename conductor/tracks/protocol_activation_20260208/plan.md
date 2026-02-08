@@ -15,10 +15,10 @@ This plan outlines the total overhaul of the `conductor/workflow.md` file to cod
 - [x] Task: Draft "Ambiguity & Recovery" Protocols
     - [x] Write the "Proactive Optioning" (Options A/B/C) mandate including Trade-offs, Risk Profile, and Effort.
     - [x] Write the "Recovery Protocol" section mandating `RECOVERY_QUEUE.md` usage for failures.
-- [ ] Task: Draft "Visibility & Audit" Requirements
-    - [ ] Write the mandate for `.captain-status.md` (HUD) updated via Lifecycle Hooks.
-    - [ ] Write the requirement for `RequestLog.md` as the central forensic audit aggregator.
-- [ ] Task: Conductor - User Manual Verification 'Preparation & Drafting' (Protocol in workflow.md)
+- [x] Task: Draft "Visibility & Audit" Requirements
+    - [x] Write the mandate for `.captain-status.md` (HUD) updated via Lifecycle Hooks.
+    - [x] Write the requirement for `RequestLog.md` as the central forensic audit aggregator.
+- [x] Task: Conductor - User Manual Verification 'Preparation & Drafting' (Protocol in workflow.md)
 
 ## Phase 2: Finalization & Integration
 - [ ] Task: Assemble and Refine `conductor/workflow.md`
