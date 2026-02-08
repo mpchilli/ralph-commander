@@ -191,6 +191,11 @@ impl HatlessRalph {
         self
     }
 
+    /// Returns the current objective string, or a default message if none set.
+    pub fn objective(&self) -> String {
+        self.objective.clone().unwrap_or_else(|| "No objective set".to_string())
+    }
+
     /// Stores the user's original objective so it persists across all iterations.
     ///
     /// Called once during initialization. The objective is injected into every

@@ -25,7 +25,9 @@ use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, error, info, warn};
 
-use crate::display::{build_tui_hat_map, print_iteration_separator, print_termination};
+use crate::display::{
+    build_tui_hat_map, print_captain_header, print_iteration_separator, print_termination,
+};
 use crate::process_management;
 use crate::{ColorMode, Verbosity};
 
@@ -798,6 +800,14 @@ pub async fn run_loop_impl(
                 display_hat.as_str(),
                 event_loop.state().elapsed(),
                 config.event_loop.max_iterations,
+                use_colors,
+            );
+            
+            // CAPTAIN SAFETY NET: Print Mission Control header
+            print_captain_header(
+                &event_loop.active_task_id(),
+                display_hat.as_str(),
+                &event_loop.current_risk_tier(),
                 use_colors,
             );
         }

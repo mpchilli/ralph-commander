@@ -119,6 +119,8 @@ pub struct EventLoop {
     loop_context: Option<LoopContext>,
     /// Skill registry for the current loop.
     skill_registry: SkillRegistry,
+    /// Manages real-time status artifacts.
+    status_manager: crate::status_manager::StatusManager,
     /// Audit logger for safety events.
     audit_logger: crate::audit_logger::AuditLogger,
     /// Recovery queue for human intervention.
@@ -265,6 +267,7 @@ impl EventLoop {
             diagnostics,
             loop_context: Some(context),
             skill_registry,
+            status_manager: crate::status_manager::StatusManager::new(context.workspace()),
             audit_logger: crate::audit_logger::AuditLogger::new(context.workspace()),
             recovery_queue: crate::recovery_queue::RecoveryQueue::new(context.workspace()),
             triage_hat: crate::triage_hat::TriageHat::new(),
@@ -367,6 +370,7 @@ impl EventLoop {
             diagnostics,
             loop_context: None,
             skill_registry,
+            status_manager: crate::status_manager::StatusManager::new(workspace_root),
             audit_logger: crate::audit_logger::AuditLogger::new(workspace_root),
             recovery_queue: crate::recovery_queue::RecoveryQueue::new(workspace_root),
             triage_hat: crate::triage_hat::TriageHat::new(),
@@ -505,16 +509,12 @@ impl EventLoop {
         None
     }
 
-    /// Blocks the current thread if the recovery queue is non-empty.
-    ///
-    /// Per Captain Methodology: "Wait/poll until the file is cleared."
-    /// This ensures human sovereignty by physically stopping agent autonomy.
     pub async fn block_on_recovery_queue(&mut self) {
         // Block if recovery required
         if self.recovery_queue.is_blocked() {
             self.state.is_halted = true;
             warn!("🚨 RECOVERY REQUIRED: Implementation halted. Please check RECOVERY_QUEUE.md");
-            self.audit_logger.log_halt("Manual recovery block active");
+            self.audit_logger.log_halt(&self.correlation_id(), "Manual recovery block active");
 
             while self.recovery_queue.is_blocked() {
                 // Poll every 2 seconds
@@ -522,7 +522,7 @@ impl EventLoop {
             }
 
             info!("Recovery queue cleared. Resuming orchestration.");
-            self.audit_logger.log_recovery();
+            self.audit_logger.log_recovery(&self.correlation_id());
             self.state.is_halted = false;
         }
 
@@ -573,7 +573,7 @@ impl EventLoop {
 
         info!(selection = %chosen, "Human decision captured");
         self.state.human_decision = Some(chosen.clone());
-        self.audit_logger.log_event("HUMAN_DECISION", &format!("Question: {} | Selected: {}", options.question, chosen));
+        self.audit_logger.log_event("HUMAN_DECISION", &self.correlation_id(), &format!("Question: {} | Selected: {}", options.question, chosen));
 
         // Publish human.response event
         let response_event = Event::new("human.response", format!("Human Decision: Use Option {}", chosen));
@@ -701,6 +701,9 @@ impl EventLoop {
             self.state.triage_decision = Some(decision.clone());
             triage_decision = Some(decision.clone());
 
+            // Log triage to forensic log
+            self.audit_logger.log_event("TRIAGE_DECISION", &self.correlation_id(), &format!("Mode: {:?} | Reason: {} | Confidence: {:.2}", decision.mode, decision.reason, decision.confidence));
+
             // Publish triage decision event (EventBus will update its internal mode)
             let decision_json = serde_json::to_string(&decision).unwrap_or_default();
             let mut decision_event = Event::new("triage.decision", decision_json);
@@ -716,6 +719,9 @@ impl EventLoop {
             // Store strategy in state
             self.state.active_strategy = Some(strategy.clone());
             
+            // Log TEA strategy to forensic log
+            self.audit_logger.log_event("TEA_STRATEGY", &self.correlation_id(), &format!("Tier: {:?} | MinCoverage: {}% | Categories: {:?}", strategy.tier, strategy.min_coverage, strategy.mandatory_categories));
+
             // Publish test strategy event
             let strategy_json = serde_json::to_string(&strategy).unwrap_or_default();
             let strategy_event = Event::new("test.strategy", strategy_json).with_strategy(strategy);
@@ -834,6 +840,14 @@ impl EventLoop {
     /// primed memories to the prompt context. If a scratchpad file exists and is
     /// non-empty, its content is also prepended (before memories).
     pub fn build_prompt(&mut self, hat_id: &HatId) -> Option<String> {
+        // CAPTAIN SAFETY NET: Update Mission Control status at start of each iteration
+        self.status_manager.update(
+            &self.state,
+            &self.ralph.objective(),
+            self.config.event_loop.max_iterations,
+            self.recovery_queue.is_blocked()
+        );
+
         // Handle "ralph" hat - the constant coordinator
         // Per spec: "Hatless Ralph is constant — Cannot be replaced, overwritten, or configured away"
         if hat_id.as_str() == "ralph" {
@@ -1988,7 +2002,7 @@ impl EventLoop {
                             self.state.last_snapshot_sha.as_deref(),
                         );
                         self.state.is_halted = true;
-                        self.audit_logger.log_halt(&format!("Backpressure failure: {}", error_msg));
+                        self.audit_logger.log_halt(&self.correlation_id(), &format!("Backpressure failure: {}", error_msg));
 
                         validated_events.push(Event::new(
                             "build.blocked",
@@ -2016,7 +2030,7 @@ impl EventLoop {
                         self.state.last_snapshot_sha.as_deref(),
                     );
                     self.state.is_halted = true;
-                    self.audit_logger.log_halt(&format!("Backpressure error: {}", error_msg));
+                    self.audit_logger.log_halt(&self.correlation_id(), &format!("Backpressure error: {}", error_msg));
 
                     validated_events.push(Event::new(
                         "build.blocked",
@@ -2412,6 +2426,27 @@ impl EventLoop {
     /// without waiting for the full timeout.
     pub fn robot_shutdown_flag(&self) -> Option<Arc<AtomicBool>> {
         self.robot_service.as_ref().map(|s| s.shutdown_flag())
+    }
+
+    /// Returns the current active task ID.
+    pub fn active_task_id(&self) -> String {
+        "pending".to_string()
+    }
+
+    /// Returns the current risk tier string.
+    pub fn current_risk_tier(&self) -> String {
+        self.state.active_strategy.as_ref()
+            .map(|s| format!("{:?}", s.tier))
+            .unwrap_or_else(|| "Unknown".to_string())
+    }
+
+    /// Returns a unique identifier for the current loop/task context.
+    fn correlation_id(&self) -> String {
+        self.loop_context
+            .as_ref()
+            .and_then(|ctx| ctx.loop_id())
+            .map(|id| id.to_string())
+            .unwrap_or_else(|| "main".to_string())
     }
 
     /// Stops the robot service if it's running.

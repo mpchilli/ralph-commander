@@ -16,32 +16,27 @@ impl AuditLogger {
     }
 
     /// Logs a safety event.
-    pub fn log_event(&self, event_type: &str, details: &str) {
+    pub fn log_event(&self, event_type: &str, correlation_id: &str, details: &str) {
         let timestamp = chrono::Utc::now().to_rfc3339();
-        let entry = format!("| {} | {} | {} |
-", timestamp, event_type, details);
+        let entry = format!("| {} | {} | {} | {} |", timestamp, event_type, correlation_id, details);
         
         // Ensure file exists with header if needed
         if !self.path.exists() {
-            let _ = fs::write(&self.path, "# Request Log (Audit Trail)
-
-| Timestamp | Event | Details |
-| --- | --- | --- |
-");
+            let _ = fs::write(&self.path, "# Request Log (Audit Trail)\n\n| Timestamp | Event Type | Correlation ID | Details |\n| --- | --- | --- | --- |\n");
         }
 
         if let Ok(mut file) = fs::OpenOptions::new().append(true).open(&self.path) {
-            let _ = writeln!(file, "{}", entry.trim_end());
+            let _ = writeln!(file, "{}", entry);
         }
     }
 
     /// Logs a loop halt.
-    pub fn log_halt(&self, reason: &str) {
-        self.log_event("LOOP_HALTED", reason);
+    pub fn log_halt(&self, correlation_id: &str, reason: &str) {
+        self.log_event("LOOP_HALTED", correlation_id, reason);
     }
 
     /// Logs a recovery transition.
-    pub fn log_recovery(&self) {
-        self.log_event("LOOP_RESUMED", "Recovery queue cleared by human");
+    pub fn log_recovery(&self, correlation_id: &str) {
+        self.log_event("LOOP_RESUMED", correlation_id, "Recovery queue cleared by human");
     }
 }

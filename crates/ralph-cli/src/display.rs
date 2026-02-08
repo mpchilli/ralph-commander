@@ -32,6 +32,24 @@ pub fn hat_emoji(hat_id: &str) -> &'static str {
     }
 }
 
+/// Prints the Captain's Mission Control header.
+pub fn print_captain_header(
+    task_id: &str,
+    hat: &str,
+    risk_tier: &str,
+    use_colors: bool,
+) {
+    use colors::*;
+
+    let header = format!("[ {} ] | [ {} ] | [ {} ]", task_id, hat, risk_tier);
+    
+    if use_colors {
+        println!("{BOLD}{MAGENTA}{}{RESET}", header);
+    } else {
+        println!("{}", header);
+    }
+}
+
 /// Prints the iteration demarcation separator.
 ///
 /// Per spec: "Each iteration must be clearly demarcated in the output so users can
