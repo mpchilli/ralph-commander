@@ -1,30 +1,47 @@
-# Workflow: Ralph Commander 3.1
+# Workflow: Ralph Commander 3.1 (Captain Protocol)
 
-## 1. Project Inception & Triage (BMad)
-Every new request must first pass through the **Triage Hat**.
-- **Simple Path:** For bug fixes or minor tweaks, route directly to TEA for test design then to the Execution Loop.
-- **Full Planning Path:** For new features or architectural changes, route to the **Architect Hat** for a full specification and plan.
+This document defines the mandatory operational lifecycle for all autonomous agents in the Ralph Commander environment. Adherence to these protocols is non-negotiable and enforced by the system's "Safety-Hardened" core.
 
-## 2. Planning & Strategy
-- **Architect Hat:** Generates `spec.md` and `plan.md`.
-- **TEA Hat (Test Architect):** Analyzes the plan and defines the **Risk-Based Testing Strategy**. TEA establishes the specific coverage requirements and release gates for the task based on its criticality.
+---
 
-## 3. Ambiguity Protocol (Captain)
-At any point during planning or implementation, if an agent encounters technical blockers or architectural ambiguity, it **must** halt.
-- Present structured **A/B/C Options** to the human commander.
-- Wait for explicit approval before proceeding.
+## 1. Project Inception & Triage (Scale-Adaptive)
+Every new objective MUST pass through the **Triage Phase** before any planning or implementation occurs.
+- **Complexity Assessment:** An automated LLM analysis evaluates the task across four dimensions:
+    - **Risk Level:** Potential for destructive changes or data loss.
+    - **Context Requirements:** Depth of architectural knowledge needed.
+    - **Verification Rigor:** Selection of the appropriate Safety Tier (T1/T2/T3).
+    - **Human Dependency:** Identification of likely ambiguity points.
+- **Routing Decision:**
+    - **Simple Path:** For minor fixes (typos, docs, UI tweaks). Routes directly to TEA then to Execution.
+    - **Architect Path (Full):** For features, refactors, or high-risk changes. Routes to the **Architect Hat** for full specification.
 
-## 4. Execution Loop (Ralph)
-- **Atomic Snapshot:** Before any tool execution, the system must create a `CAPTAIN_SNAPSHOT` git commit.
-- **Implementation:** The agent iterates through the plan.
-- **Backpressure:** The TEA Hat applies "Backpressure," rejecting any code that does not meet the task-specific test strategy.
-- **Recovery:** If a task enters a failed state, it is moved to the **Recovery Queue** for human intervention.
+## 2. Planning & Strategy (Methodological Rigor)
+- **Architect Hat:** Generates a comprehensive `spec.md` and `plan.md`. The plan must be an atomic breakdown of verifiable tasks.
+- **TEA Hat (Test Architect):** Analyzes the plan and defines the **Risk-Based Testing Strategy**.
+    - **Safety Tiers:** TEA assigns a Tier (1, 2, or 3) based on the Heuristic Matrix.
+    - **Quality Gates:** Emits a `test.strategy` event defining mandatory coverage, test categories, and hard release gates (e.g., zero lint warnings).
 
-## 5. Audit & Release Gate
-- **Git Notes:** Upon completion of a task, a machine-readable summary (triage decisions, TEA results) is attached to the commit via Git Notes.
-- **Sovereignty Protocol:** Upon passing final TEA verification, the system triggers a release gate. The user must explicitly select the semantic version increment (Patch/Minor/Major) before the release is tagged.
+## 3. Ambiguity Protocol (Proactive Optioning)
+Agents are strictly FORBIDDEN from guessing or making strategic assumptions.
+- **The Options Protocol:** If an agent encounters architectural ambiguity, technical blockers, or safety guardrail violations, it MUST immediately halt implementation.
+- **Sovereign Command:** The agent emits a `human.interact` event presenting structured **Options A, B, and C** (with pros/cons). The EventLoop enters an **Interactive Block** and will not resume until the Human Commander selects an option.
+- **Decision Enforcement:** The user's choice is injected as a mandatory **Override Instruction** in the next prompt.
 
-## 6. Phase Completion Verification and Checkpointing Protocol
-At the end of every Phase, the system MUST halt for **Manual User Verification**.
-- Protocol: The user reviews the Phase artifacts.
-- Action: If verified, a git checkpoint is created. If rejected, the system reverts to the Last Atomic Snapshot.
+## 4. Execution Loop (The Law of Reversibility)
+The implementation phase operates under a "Save-Game" philosophy.
+- **Atomic Snapshot:** The system MUST trigger a `CAPTAIN_SNAPSHOT` git commit (staging all changes) immediately BEFORE any implementation unit starts. No autonomous tool call is permitted without a preceding snapshot hash.
+- **Backpressure Enforcement:** The system automatically validates all `build.done` attempts against the active `test.strategy`. If a quality gate is violated, the loop synthesizes a `build.blocked` event and refuses to progress.
+
+## 5. Recovery Protocol (Human Sovereignty)
+Failure is handled as a strategic pivot, not a crash.
+- **The Halted State:** Upon task failure, the system writes the Task ID, Failure Reason, and a **Rollback Command** (referencing the Last Snapshot) to `RECOVERY_QUEUE.md`.
+- **Sovereignty Block:** The EventLoop enters a physical block. Implementation is disabled until the Human Commander manually reviews the failure and **clears the RECOVERY_QUEUE.md artifact**.
+
+## 6. Visibility & Audit (Radical Transparency)
+- **The HUD:** The system maintains a real-time "Heads-Up Display" in `.captain-status.md` and `.captain-status.json`, showing the Current Objective, Active Hat, Risk Tier, and Safety Status.
+- **Forensic Audit:** All critical events (Triage, TEA, Human Choice, Snapshots, Halts) are centralized in the linear, append-only **RequestLog.md** aggregator.
+
+## 7. Phase Completion Verification
+At the end of every major Phase defined in a track's Implementation Plan, the system MUST halt for **Manual User Verification**.
+- **Checkpointing:** If the user verifies the phase artifacts, a git checkpoint is created.
+- **Reversion:** If rejected, the system provides an option to revert to the Last Atomic Snapshot.
